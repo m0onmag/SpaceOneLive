@@ -1,8 +1,0 @@
-.idea/
-*.iml
-target/
-build/
-out/
-.gradle/
-*.log
-.DS_Store
