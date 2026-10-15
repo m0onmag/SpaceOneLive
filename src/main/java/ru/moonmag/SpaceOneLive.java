@@ -10,6 +10,7 @@ import ru.moonmag.config.MessageConfig;
 import ru.moonmag.listener.PlayerListener;
 import ru.moonmag.service.LifeService;
 import ru.moonmag.utils.Hex;
+import ru.moonmag.utils.Metrics;
 import java.sql.SQLException;
 
 @Getter
@@ -17,12 +18,14 @@ public final class SpaceOneLive extends JavaPlugin {
 
     private static final String FRAME = "&#ff7c00";
     private static final String LINK = "https://t.me/spacestudiomc";
+    private static final int BSTATS_ID = 34698;
 
     @Getter
     private static SpaceOneLive instance;
 
     private MessageConfig messageConfig;
     private LifeService lifeService;
+    private Metrics metrics;
 
     @Override
     public void onEnable() {
@@ -47,13 +50,18 @@ public final class SpaceOneLive extends JavaPlugin {
             command.setTabCompleter(executor);
         }
 
+        this.metrics = new Metrics(this, BSTATS_ID);
+
         banner("Запуск плагина...", "&#00ff17Плагин запустился!");
-        new ru.moonmag.utils.Metrics(this, 34698);
         new ru.moonmag.utils.UpdateChecker(this).checkForUpdates();
     }
 
     @Override
     public void onDisable() {
+        if (metrics != null) {
+            metrics.shutdown();
+            metrics = null;
+        }
         if (lifeService != null) {
             lifeService.close();
             lifeService = null;
