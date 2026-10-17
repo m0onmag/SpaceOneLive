@@ -19,6 +19,79 @@
 messages:
   reload: "&aУспешная перезагрузка плагина!"
   nopermission: "&cУ вас недостаточно прав!"
-  usage: "&fИспользование&7: &b/spaceonelive reload"
+  usage: "&fИспользование&7: &b/spaceonelive reload &fили &b/spaceonelive animate fast, slow <ник>"
+  player-not-found: "&cИгрок не найден или не в сети."
   death: "&cК сожалению твой путь закончился...."
   first-time: "&bOneLive &8» &fПривет игрок! Ты попал на сервер, где только &cодна жизнь&f! После &cсмерти &fты больше не сможешь сюда попасть! &aУдачи&f."
+
+death-animation:
+  # Временно разрешает игроку полёт, чтобы защита сервера не прерывала анимацию.
+  allow-flight: true
+  # Сколько тиков игрок видит взрыв перед отключением. 20 тиков = 1 секунда.
+  explosion-delay: 10
+  types:
+    # Быстрый взлёт перед взрывом.
+    fast:
+      # Длительность подъёма в тиках. 20 тиков = 1 секунда.
+      duration: 30
+      # Высота, на которой произойдёт взрыв.
+      height: 18.0
+    # Медленный плавный подъём перед взрывом.
+    slow:
+      # Длительность подъёма в тиках. 20 тиков = 1 секунда.
+      duration: 70
+      # Высота, на которой произойдёт взрыв.
+      height: 18.0
+  effects:
+    ascent:
+      # Звук в начале подъёма.
+      sound:
+        type: ENTITY_ENDER_DRAGON_FLAP
+        volume: 1.0
+        pitch: 1.6
+      # Основные частицы во время подъёма.
+      flame:
+        type: SOUL_FIRE_FLAME
+        count: 18
+        offset-x: 0.25
+        offset-y: 0.45
+        offset-z: 0.25
+        speed: 0.01
+      # Дополнительные частицы во время подъёма.
+      portal:
+        type: REVERSE_PORTAL
+        count: 9
+        offset-x: 0.2
+        offset-y: 0.35
+        offset-z: 0.2
+        speed: 0.05
+    explosion:
+      # Звук взрыва в небе.
+      sound:
+        type: ENTITY_GENERIC_EXPLODE
+        volume: 1.2
+        pitch: 0.7
+      # Вспышка в центре взрыва.
+      main:
+        type: EXPLOSION_LARGE
+        count: 4
+        offset-x: 0.4
+        offset-y: 0.4
+        offset-z: 0.4
+        speed: 0.1
+      # Огненное облако после вспышки.
+      flame:
+        type: SOUL_FIRE_FLAME
+        count: 80
+        offset-x: 0.7
+        offset-y: 0.7
+        offset-z: 0.7
+        speed: 0.08
+      # Частицы разрыва пространства после взрыва.
+      portal:
+        type: REVERSE_PORTAL
+        count: 80
+        offset-x: 0.7
+        offset-y: 0.7
+        offset-z: 0.7
+        speed: 0.2

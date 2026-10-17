@@ -1,7 +1,12 @@
 package ru.moonmag.service;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 import ru.moonmag.SpaceOneLive;
 import ru.moonmag.config.MessageConfig;
 import java.io.File;
@@ -17,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 public class LifeService {
@@ -28,6 +34,7 @@ public class LifeService {
     private final SpaceOneLive plugin;
     private final MessageConfig messages;
     private final Set<UUID> dead = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> animating = ConcurrentHashMap.newKeySet();
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, "SpaceOneLive-DB");
         thread.setDaemon(true);
@@ -85,6 +92,10 @@ public class LifeService {
         return dead.contains(uuid);
     }
 
+    public boolean isAnimating(UUID uuid) {
+        return animating.contains(uuid);
+    }
+
     public String deathMessage() {
         return messages.get("death");
     }
@@ -112,11 +123,82 @@ public class LifeService {
             }
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (player.isOnline()) {
-                player.kickPlayer(deathMessage());
+        playAnimation(player, ThreadLocalRandom.current().nextBoolean() ? "fast" : "slow", true);
+    }
+
+    public void playAnimation(Player player, String type) {
+        playAnimation(player, type, false);
+    }
+
+    private void playAnimation(Player player, String type, boolean kick) {
+        String path = "death-animation.types." + type;
+        int duration = plugin.getConfig().getInt(path + ".duration");
+        double height = plugin.getConfig().getDouble(path + ".height");
+        boolean allowFlight = player.getAllowFlight();
+        animating.add(player.getUniqueId());
+        if (plugin.getConfig().getBoolean("death-animation.allow-flight")) {
+            player.setAllowFlight(true);
+        }
+        playSound(player.getLocation(), "death-animation.effects.ascent.sound");
+
+        new BukkitRunnable() {
+            private int ticks;
+
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    animating.remove(player.getUniqueId());
+                    cancel();
+                    return;
+                }
+                if (ticks >= duration) {
+                    Location location = player.getLocation().add(0, 1, 0);
+                    spawnParticle(location, "death-animation.effects.explosion.main");
+                    spawnParticle(location, "death-animation.effects.explosion.flame");
+                    spawnParticle(location, "death-animation.effects.explosion.portal");
+                    playSound(location, "death-animation.effects.explosion.sound");
+                    if (kick) {
+                        player.setVelocity(new Vector(0, 0, 0));
+                        player.setFlying(true);
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            animating.remove(player.getUniqueId());
+                            if (player.isOnline()) {
+                                player.kickPlayer(deathMessage());
+                            }
+                        }, plugin.getConfig().getLong("death-animation.explosion-delay"));
+                    } else {
+                        player.setAllowFlight(allowFlight);
+                        animating.remove(player.getUniqueId());
+                    }
+                    cancel();
+                    return;
+                }
+                player.setVelocity(new Vector(0, height / duration, 0));
+                Location location = player.getLocation().add(0, 1, 0);
+                spawnParticle(location, "death-animation.effects.ascent.flame");
+                spawnParticle(location, "death-animation.effects.ascent.portal");
+                ticks++;
             }
-        });
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void spawnParticle(Location location, String path) {
+        location.getWorld().spawnParticle(
+                Particle.valueOf(plugin.getConfig().getString(path + ".type")),
+                location,
+                plugin.getConfig().getInt(path + ".count"),
+                plugin.getConfig().getDouble(path + ".offset-x"),
+                plugin.getConfig().getDouble(path + ".offset-y"),
+                plugin.getConfig().getDouble(path + ".offset-z"),
+                plugin.getConfig().getDouble(path + ".speed"));
+    }
+
+    private void playSound(Location location, String path) {
+        location.getWorld().playSound(
+                location,
+                Sound.valueOf(plugin.getConfig().getString(path + ".type")),
+                (float) plugin.getConfig().getDouble(path + ".volume"),
+                (float) plugin.getConfig().getDouble(path + ".pitch"));
     }
 
     public void close() {
